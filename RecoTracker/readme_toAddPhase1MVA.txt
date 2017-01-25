@@ -1,8 +1,6 @@
 #add the following code when running track reconstruction in order to
 #use the phase1 retrained weights
 
-usePhase1 = True
-
 process.load("CondCore.CondDB.CondDB_cfi")
 # input database (in this case local sqlite file)
 process.CondDB.connect = 'sqlite_file:./GBRWrapper_13TeV_900pre2.db'
