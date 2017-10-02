@@ -1,1 +1,8 @@
 Introduction to CMSSW: http://cms-sw.github.io
+
+Contains the changes to FinalTrackSelectors required for using CMSSW DNN in IterativeTrackSelection.
+Includes an example Tensorflow-graph used for evaluation of the DNN in TrackMVASelectorBase.cc.
+
+Requires adding the cms-package DNN with:
+
+git clone https://gitlab.cern.ch/mrieger/CMSSW-DNN.git DNN
