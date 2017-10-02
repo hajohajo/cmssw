@@ -304,6 +304,135 @@ namespace {
       
     }
 
+    float operator()(reco::Track const & trk,
+                     reco::BeamSpot const & beamSpot,
+                     reco::VertexCollection const & vertices,
+                     tf::Session const *,
+		     tf::Tensor *,
+		     tf::Tensor *) const {
+
+      float ret = 1.f;
+      // minimum number of hits for by-passing the other checks
+      if ( minHits4pass[0] < std::numeric_limits<int>::max() ) {
+        ret = std::min(ret,cut(nHits(trk),minHits4pass,std::greater_equal<int>()));
+        if (ret==1.f) return ret;
+      }
+
+      if ( maxRelPtErr[2] < std::numeric_limits<float>::max() ) {
+        ret = std::min(ret,cut(relPtErr(trk),maxRelPtErr,std::less_equal<float>()) );
+        if (ret==-1.f) return ret;
+      }
+
+      ret = std::min(ret,cut(float(trk.ndof()),minNdof,std::greater_equal<float>()) );
+      if (ret==-1.f) return ret;
+
+      auto  nLayers = trk.hitPattern().trackerLayersWithMeasurement();
+      ret = std::min(ret,cut(nLayers,minLayers,std::greater_equal<int>()));
+      if (ret==-1.f) return ret;
+
+      ret = std::min(ret,cut(chi2n(trk)/float(nLayers),maxChi2n,std::less_equal<float>()));
+      if (ret==-1.f) return ret;
+
+      ret = std::min(ret,cut(chi2n(trk),maxChi2,std::less_equal<float>()));
+      if (ret==-1.f) return ret;
+
+      ret = std::min(ret,cut(n3DLayers(trk,isHLT),min3DLayers,std::greater_equal<int>()));
+      if (ret==-1.f) return ret;
+
+      ret = std::min(ret,cut(nHits(trk),minHits,std::greater_equal<int>()));
+      if (ret==-1.f) return ret;
+
+      ret = std::min(ret,cut(nPixelHits(trk),minPixelHits,std::greater_equal<int>()));
+      if (ret==-1.f) return ret;
+
+      ret = std::min(ret,cut(lostLayers(trk),maxLostLayers,std::less_equal<int>()));
+      if (ret==-1.f) return ret;
+
+      // original dz and dr cut
+      if (maxDz[2]<std::numeric_limits<float>::max() || maxDr[2]<std::numeric_limits<float>::max()) {
+
+        // if not primaryVertices are reconstructed, check compatibility w.r.t. beam spot
+        Point bestVertex = getBestVertex(trk,vertices,minNVtxTrk); // min number of tracks [2 (=default) for offline, 3 for HLT]
+        float maxDzcut[3];
+        std::copy(std::begin(maxDz),std::end(maxDz),std::begin(maxDzcut));
+        if (bestVertex.z() < -99998.) {
+          bestVertex = beamSpot.position();
+          std::copy(std::begin(maxDzWrtBS),std::end(maxDzWrtBS),std::begin(maxDzcut));
+        }
+	ret = std::min(ret,cut(dr(trk,bestVertex), maxDr,std::less<float>()));
+        if (ret==-1.f) return ret;
+
+        ret = std::min(ret,cut(dz(trk,bestVertex), maxDzcut,std::less<float>()));
+        if (ret==-1.f) return ret;
+
+      }
+
+
+      // parametrized dz and dr cut by using PV error
+      if (dzWPVerr_par[2]<std::numeric_limits<float>::max() || drWPVerr_par[2]<std::numeric_limits<float>::max()) {
+
+        Point bestVertexError(-1.,-1.,-1.);
+        Point bestVertex = getBestVertex_withError(trk,vertices,bestVertexError,minNVtxTrk); // min number of tracks [2 (=default) for offline, 3 for HLT]
+
+        float maxDz_par[3];
+        float maxDr_par[3];
+        dzCut_wPVerror_par(trk,nLayers,dzWPVerr_par,dz_exp,bestVertexError, maxDz_par);
+        drCut_wPVerror_par(trk,nLayers,drWPVerr_par,dr_exp,bestVertexError, maxDr_par);
+
+        ret = std::min(ret,cut(dr(trk,bestVertex), maxDr_par,std::less<float>()));
+        if (ret==-1.f) return ret;
+
+        ret = std::min(ret,cut(dz(trk,bestVertex), maxDr_par,std::less<float>()));
+        if (ret==-1.f) return ret;
+
+      }
+
+      // parametrized dz and dr cut by using their error
+      if (dz_par1[2]<std::numeric_limits<float>::max() || dr_par1[2]<std::numeric_limits<float>::max()) {
+
+        float maxDz_par1[3];
+        float maxDr_par1[3];
+        dzCut_par1(trk,nLayers,dz_par1,dz_exp, maxDz_par1);
+        drCut_par1(trk,nLayers,dr_par1,dr_exp, maxDr_par1);
+
+        float maxDz_par[3];
+        float maxDr_par[3];
+        std::copy(std::begin(maxDz_par1),std::end(maxDz_par1),std::begin(maxDz_par));
+        std::copy(std::begin(maxDr_par1),std::end(maxDr_par1),std::begin(maxDr_par));
+
+        // parametrized dz and dr cut by using d0 and z0 resolution
+        if (dz_par2[2]<std::numeric_limits<float>::max() || dr_par2[2]<std::numeric_limits<float>::max()) {
+
+          float maxDz_par2[3];
+          float maxDr_par2[3];
+          dzCut_par2(trk,nLayers,dz_par2,dz_exp,d0err,d0err_par, maxDz_par2);
+          drCut_par2(trk,nLayers,dr_par2,dr_exp,d0err,d0err_par, maxDr_par2);
+
+
+          for (int i=2; i>=0; --i) {
+            if (maxDr_par2[i]<maxDr_par[i]) maxDr_par[i] = maxDr_par2[i];
+            if (maxDz_par2[i]<maxDz_par[i]) maxDz_par[i] = maxDz_par2[i];
+          }
+	}
+
+	Point bestVertex = getBestVertex(trk,vertices,minNVtxTrk); // min number of tracks 3 @HLT
+        if (bestVertex.z() < -99998.) {
+          bestVertex = beamSpot.position();
+        }
+
+	ret = std::min(ret,cut(dz(trk,bestVertex), maxDz_par,std::less<float>()));
+        if (ret==-1.f) return ret;
+        ret = std::min(ret,cut(dr(trk,bestVertex), maxDr_par,std::less<float>()));
+        if (ret==-1.f) return ret;
+
+
+      }
+      if (ret==-1.f) return ret;
+
+      return ret;
+
+    }
+
 
 
     static const char * name() { return "TrackCutClassifier";}

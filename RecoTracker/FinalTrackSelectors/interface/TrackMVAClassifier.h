@@ -16,6 +16,7 @@
 #include "FWCore/Utilities/interface/InputTag.h"
 
 #include "CondFormats/EgammaObjects/interface/GBRForest.h"
+#include "DNN/TensorFlow/interface/TensorFlow.h"
 
 #include <vector>
 #include <memory>
@@ -38,6 +39,15 @@ protected:
 			  GBRForest const * forestP,
 			  MVACollection & mvas) const = 0;
 
+  virtual void computeMVA(reco::TrackCollection const & tracks,
+                          reco::BeamSpot const & beamSpot,
+                          reco::VertexCollection const & vertices,
+                          tf::Session * sess,
+			  tf::Tensor * x,
+			  tf::Tensor * y,
+                          MVACollection & mvas) const = 0;
+
+
   
 private:
   
@@ -57,6 +67,7 @@ private:
   const std::string forestLabel_;
   const std::string dbFileName_;
   const bool useForestFromDB_;
+  const bool overrideWithDNN_;
 
   // qualitycuts (loose, tight, hp)
   float qualityCuts[3];
@@ -92,6 +103,21 @@ private:
 	mvas[current++]= mva(trk,beamSpot,vertices,forestP);
       }
     }
+
+    void computeMVA(reco::TrackCollection const & tracks,
+                    reco::BeamSpot const & beamSpot,
+                    reco::VertexCollection const & vertices,
+                    tf::Session * sess,
+		    tf::Tensor * x,
+		    tf::Tensor * y,
+                    MVACollection & mvas) const final {
+
+      size_t current = 0;
+      for (auto const & trk : tracks) {
+        mvas[current++]= mva(trk,beamSpot,vertices,sess,x,y);
+      }
+    }
+
 
   MVA mva;
 };
