@@ -19,7 +19,8 @@ struct mva {
   mva(const edm::ParameterSet &cfg):
     forestLabel_    ( cfg.getParameter<std::string>("GBRForestLabel") ),
     dbFileName_     ( cfg.getParameter<std::string>("GBRForestFileName") ),
-    useForestFromDB_( (!forestLabel_.empty()) & dbFileName_.empty())
+    useForestFromDB_( (!forestLabel_.empty()) & dbFileName_.empty()),
+    GraphPath_      ( cfg.getParameter<std::string>("GraphPath") )
   {}
 
   void beginStream() {
@@ -36,6 +37,14 @@ struct mva {
       es.get<GBRWrapperRcd>().get(forestLabel_,forestHandle);
       forest_ = forestHandle.product();
     }
+  }
+
+  void initDNN(const edm::EventSetup& es) {
+    graph_ = tf::Graph(GraphPath_);
+    session_ = tf::Session(&graph_);
+    xShape_ = tf::Shape({1,22});
+    x_ = new tf::Tensor(2,xShape_);
+    y_ = new tf::Tensor();
   }
 
   float operator()(reco::Track const & trk,
@@ -105,6 +114,72 @@ struct mva {
     
   }
 
+  float operator()(reco::Track const & trk,
+                   reco::BeamSpot const & beamSpot,
+                   reco::VertexCollection const & vertices,
+		   bool UseDNN) const {
+
+    auto tmva_pt_ = trk.pt();
+    auto tmva_eta_ = trk.eta();
+    auto tmva_lambda_ = trk.lambda();
+    auto tmva_absd0_ = std::abs(trk.dxy(beamSpot.position()));
+    auto tmva_absdz_ = std::abs(trk.dz(beamSpot.position()));
+    Point bestVertex = getBestVertex(trk,vertices);
+    auto tmva_absd0PV_ = std::abs(trk.dxy(bestVertex));
+    auto tmva_absdzPV_ = std::abs(trk.dz(bestVertex));
+    auto tmva_ptErr_ = trk.ptError();
+    auto tmva_etaErr_ = trk.etaError();
+    auto tmva_lambdaErr_ = trk.lambdaError();
+    auto tmva_dxyErr_ = trk.dxyError();
+    auto tmva_dzErr_ = trk.dzError();
+    auto tmva_nChi2_ = trk.normalizedChi2();
+    auto tmva_ndof_ = trk.ndof();
+    auto tmva_nInvalid_ = trk.hitPattern().numberOfLostHits(reco::HitPattern::TRACK_HITS);
+    auto tmva_nPixel_ = trk.hitPattern().numberOfValidPixelHits();
+    auto tmva_nStrip_ = trk.hitPattern().numberOfValidStripHits();
+    auto tmva_nPixelLay_ = trk.hitPattern().pixelLayersWithMeasurement();
+    auto tmva_nStripLay_ = trk.hitPattern().stripLayersWithMeasurement();
+    auto tmva_n3DLay_ = (trk.hitPattern().numberOfValidStripLayersWithMonoAndStereo()+trk.hitPattern().pixelLayersWithMeasurement());
+    auto tmva_nLostLay_ = trk.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS);
+    auto tmva_algo_ = trk.algo();
+
+    std::vector<float> gbrVals_; 
+    gbrVals_.push_back(tmva_pt_);
+    gbrVals_.push_back(tmva_eta_);
+    gbrVals_.push_back(tmva_lambda_);
+    gbrVals_.push_back(tmva_absd0_);
+    gbrVals_.push_back(tmva_absdz_);
+    gbrVals_.push_back(tmva_absd0PV_);
+    gbrVals_.push_back(tmva_absdzPV_);
+    gbrVals_.push_back(tmva_ptErr_);
+    gbrVals_.push_back(tmva_etaErr_);
+    gbrVals_.push_back(tmva_lambdaErr_);
+    gbrVals_.push_back(tmva_dxyErr_);
+    gbrVals_.push_back(tmva_dzErr_);
+    gbrVals_.push_back(tmva_nChi2_);
+    gbrVals_.push_back(tmva_ndof_);
+    gbrVals_.push_back(tmva_nInvalid_);
+    gbrVals_.push_back(tmva_nPixel_);
+    gbrVals_.push_back(tmva_nStrip_);
+    gbrVals_.push_back(tmva_nPixelLay_);
+    gbrVals_.push_back(tmva_nStripLay_);
+    gbrVals_.push_back(tmva_n3DLay_);
+    gbrVals_.push_back(tmva_nLostLay_);
+    gbrVals_.push_back(tmva_algo_);
+
+    x_->setVector<float>(1,0,gbrVals_);
+    tf::IOs inputs = { session_.createIO(x_, "ins") };
+    tf::IOs outputs = { session_.createIO(y_, "outs/Sigmoid") };
+    session_.run(inputs, outputs);
+
+    float output_ = *y_->getPtr<float>(0, 0);
+
+    //Rescale to match with the BDT range traditionally used in Iterative Tracking
+    output_=2.0*output_-1.0;
+
+    return output_;
+  }
+
   static const char * name();
 
   static void fillDescriptions(edm::ParameterSetDescription & desc) {
@@ -117,6 +192,17 @@ struct mva {
   const std::string forestLabel_;
   const std::string dbFileName_;
   const bool useForestFromDB_;
+
+  std::string GraphPath_;
+  tf::Graph graph_;
+  tf::Session session_;
+  tf::Shape xShape_[2];
+  tf::Tensor* x_;
+  tf::Tensor* y_;
+
+
+
+
 };
 
   using TrackMVAClassifierDetached = TrackMVAClassifier<mva<false>>;
