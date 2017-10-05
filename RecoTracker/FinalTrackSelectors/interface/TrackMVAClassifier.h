@@ -35,10 +35,21 @@ protected:
 
   virtual void initEvent(const edm::EventSetup& es) = 0;
 
+  virtual void initDNN(const edm::EventSetup& es) = 0;
+
   virtual void computeMVA(reco::TrackCollection const & tracks,
 			  reco::BeamSpot const & beamSpot,
 			  reco::VertexCollection const & vertices,
 			  MVACollection & mvas) const = 0;
+
+  virtual void computeDNN(reco::TrackCollection const & tracks,
+                          reco::BeamSpot const & beamSpot,
+                          reco::VertexCollection const & vertices,
+			  tf::Session * sess,
+			  tf::Tensor * x,
+			  tf::Tensor * y,
+                          MVACollection & mvas) const = 0;
+
 
 private:
   void produce(edm::Event& evt, const edm::EventSetup& es ) final;
@@ -49,7 +60,7 @@ private:
   edm::EDGetTokenT<reco::VertexCollection> vertices_;
 
   bool ignoreVertices_;
-
+  bool overrideWithDNN_;
   // MVA
 
   // qualitycuts (loose, tight, hp)
@@ -83,6 +94,10 @@ private:
       mva.initEvent(es);
     }
 
+    void initDNN(const edm::EventSetup& es) final {
+      mva.initDNN(es);
+    }
+
     void computeMVA(reco::TrackCollection const & tracks,
 		    reco::BeamSpot const & beamSpot,
 		    reco::VertexCollection const & vertices,
@@ -93,6 +108,22 @@ private:
 	mvas[current++]= mva(trk,beamSpot,vertices);
       }
     }
+
+    void computeDNN(reco::TrackCollection const & tracks,
+                    reco::BeamSpot const & beamSpot,
+                    reco::VertexCollection const & vertices,
+		    tf::Session * sess,
+		    tf::Tensor * x,
+		    tf::Tensor * y,
+                    MVACollection & mvas) const final {
+
+      size_t current = 0;
+      bool useDNN=true;
+      for (auto const & trk : tracks) {
+        mvas[current++]= mva(trk,beamSpot,vertices,sess,x,y);
+      }
+    }
+
 
   MVA mva;
 };

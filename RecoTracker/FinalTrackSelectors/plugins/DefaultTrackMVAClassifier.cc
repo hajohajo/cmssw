@@ -19,8 +19,7 @@ struct mva {
   mva(const edm::ParameterSet &cfg):
     forestLabel_    ( cfg.getParameter<std::string>("GBRForestLabel") ),
     dbFileName_     ( cfg.getParameter<std::string>("GBRForestFileName") ),
-    useForestFromDB_( (!forestLabel_.empty()) & dbFileName_.empty()),
-    GraphPath_      ( cfg.getParameter<std::string>("GraphPath") )
+    useForestFromDB_( (!forestLabel_.empty()) & dbFileName_.empty())
   {}
 
   void beginStream() {
@@ -40,9 +39,13 @@ struct mva {
   }
 
   void initDNN(const edm::EventSetup& es) {
-    graph_ = tf::Graph(GraphPath_);
+    std::cout<<"INIT SESSION"<<std::endl;
+/*    std::string GraphPath_="/afs/cern.ch/work/j/jhavukai/private/LWTNNinCMSSW/CMSSW_9_4_X_2017-10-01-0000/src/Tensorflow_graph";
+    tf::Graph graph_(GraphPath_);
     session_ = tf::Session(&graph_);
-    xShape_ = tf::Shape({1,22});
+//    session_->initVariables();
+*/
+    tf::Shape xShape_[] = {1,22};
     x_ = new tf::Tensor(2,xShape_);
     y_ = new tf::Tensor();
   }
@@ -117,7 +120,11 @@ struct mva {
   float operator()(reco::Track const & trk,
                    reco::BeamSpot const & beamSpot,
                    reco::VertexCollection const & vertices,
-		   bool UseDNN) const {
+		   tf::Session * session_,
+		   tf::Tensor * x_,
+		   tf::Tensor * y_) const {
+
+    auto & session = *session_;
 
     auto tmva_pt_ = trk.pt();
     auto tmva_eta_ = trk.eta();
@@ -167,10 +174,14 @@ struct mva {
     gbrVals_.push_back(tmva_nLostLay_);
     gbrVals_.push_back(tmva_algo_);
 
+
     x_->setVector<float>(1,0,gbrVals_);
-    tf::IOs inputs = { session_.createIO(x_, "ins") };
-    tf::IOs outputs = { session_.createIO(y_, "outs/Sigmoid") };
-    session_.run(inputs, outputs);
+//    std::string GraphPath_="/afs/cern.ch/work/j/jhavukai/private/LWTNNinCMSSW/CMSSW_9_4_X_2017-10-01-0000/src/Tensorflow_graph";
+//    tf::Graph graph_(GraphPath_);
+//    tf::Session session_(&graph_);
+    tf::IOs inputs = { session.createIO(x_, "ins") };
+    tf::IOs outputs = { session.createIO(y_, "outs/Sigmoid") };
+    session.run(inputs, outputs);
 
     float output_ = *y_->getPtr<float>(0, 0);
 
@@ -193,13 +204,10 @@ struct mva {
   const std::string dbFileName_;
   const bool useForestFromDB_;
 
-  std::string GraphPath_;
-  tf::Graph graph_;
+//  tf::Graph graph_;
   tf::Session session_;
-  tf::Shape xShape_[2];
-  tf::Tensor* x_;
-  tf::Tensor* y_;
-
+  tf::Tensor* x_ = nullptr;
+  tf::Tensor* y_ = nullptr;
 
 
 

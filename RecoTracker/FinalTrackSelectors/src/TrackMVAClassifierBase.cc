@@ -13,6 +13,7 @@ void TrackMVAClassifierBase::fill( edm::ParameterSetDescription& desc) {
   desc.add<edm::InputTag>("beamspot",edm::InputTag("offlineBeamSpot"));
   desc.add<edm::InputTag>("vertices",edm::InputTag("firstStepPrimaryVertices"));
   desc.add<bool>("ignoreVertices",false);
+  desc.add<bool>("OverrideWithDNN",false);
   // default cuts for "cut based classification"
   std::vector<double> cuts = {-.7, 0.1, .7};
   desc.add<std::vector<double>>("qualityCuts", cuts);
@@ -25,7 +26,8 @@ TrackMVAClassifierBase::TrackMVAClassifierBase( const edm::ParameterSet & cfg ) 
   src_     ( consumes<reco::TrackCollection>   (cfg.getParameter<edm::InputTag>( "src" ))      ),
   beamspot_( consumes<reco::BeamSpot>          (cfg.getParameter<edm::InputTag>( "beamspot" )) ),
   vertices_( mayConsume<reco::VertexCollection>(cfg.getParameter<edm::InputTag>( "vertices" )) ),
-  ignoreVertices_( cfg.getParameter<bool>( "ignoreVertices" ) ) {
+  ignoreVertices_( cfg.getParameter<bool>( "ignoreVertices" ) ),
+  overrideWithDNN_( cfg.getParameter<bool>( "OverrideWithDNN") ){
 
   auto const & qv  = cfg.getParameter<std::vector<double>>("qualityCuts");
   assert(qv.size()==3);
@@ -57,14 +59,35 @@ void TrackMVAClassifierBase::produce(edm::Event& evt, const edm::EventSetup& es 
   auto mvas  = std::make_unique<MVACollection>(tracks.size(),-99.f);
   auto quals = std::make_unique<QualityMaskCollection>(tracks.size(),0);
 
-  if ( hVtx.isValid() && !ignoreVertices_ ) {
+  if ( hVtx.isValid() && !ignoreVertices_ && !overrideWithDNN_) {
     computeMVA(tracks,*hBsp,*hVtx,*mvas);
-  } else {
+  } else if (!overrideWithDNN_){
     if ( !ignoreVertices_ ) 
       edm::LogWarning("TrackMVAClassifierBase") << "ignoreVertices is set to False in the configuration, but the vertex collection is not valid"; 
     std::vector<reco::Vertex> vertices;
     computeMVA(tracks,*hBsp,vertices,*mvas);
-  }    
+  } else if ( hVtx.isValid() && !ignoreVertices_ && overrideWithDNN_) {
+    std::string path = "/afs/cern.ch/work/j/jhavukai/private/LWTNNinCMSSW/CMSSW_9_3_X_2017-09-25-1100/src/Tensorflow_graph";
+    tf::Graph graph(path);
+    tf::Session session(&graph);
+    session.initVariables();
+    tf::Shape xShape[] = {1,22};
+    tf::Tensor *x = new tf::Tensor(2,xShape);
+    tf::Tensor *y = new tf::Tensor();
+    computeDNN(tracks,*hBsp,*hVtx,&session,x,y,*mvas);
+  } else {
+    std::string path = "/afs/cern.ch/work/j/jhavukai/private/LWTNNinCMSSW/CMSSW_9_3_X_2017-09-25-1100/src/Tensorflow_graph";
+    tf::Graph graph(path);
+    tf::Session session(&graph);
+    session.initVariables();
+    tf::Shape xShape[] = {1,22};
+    tf::Tensor *x = new tf::Tensor(2,xShape);
+    tf::Tensor *y = new tf::Tensor();
+    if ( !ignoreVertices_ )
+      edm::LogWarning("TrackMVAClassifierBase") << "ignoreVertices is set to False in the configuration, but the vertex collection is not valid";
+    std::vector<reco::Vertex> vertices;
+    computeDNN(tracks,*hBsp,vertices,&session,x,y,*mvas);
+  }
   assert((*mvas).size()==tracks.size());
 
   unsigned int k=0;
