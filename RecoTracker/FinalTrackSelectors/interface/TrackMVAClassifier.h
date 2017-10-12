@@ -16,6 +16,7 @@
 #include "FWCore/Utilities/interface/InputTag.h"
 
 #include "CondFormats/EgammaObjects/interface/GBRForest.h"
+#include "DNN/TensorFlow/interface/TensorFlow.h"
 
 #include <vector>
 #include <memory>
@@ -55,6 +56,7 @@ private:
   float qualityCuts[3];
   
 };
+
 
 template<typename MVA>
 class TrackMVAClassifier : public TrackMVAClassifierBase {

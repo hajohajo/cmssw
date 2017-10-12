@@ -13,6 +13,44 @@
 #include "TFile.h"
 
 namespace {
+
+struct dnn {
+  dnn(const edm::ParameterSet &cfg):
+    std::string path_, //= "/afs/cern.ch/work/j/jhavukai/private/LWTNNinCMSSW/CMSSW_9_3_X_2017-09-25-1100/src/Tensorflow_graph";
+    tf::Graph graph_,
+    tf::Session session_, //(&graph_);
+    tf::Shape xShape_[], // = {1,22};
+    tf::Tensor *x_,
+    tf::Tensor *y_
+  {}
+
+  void beginStream(){}
+
+  void initEvent(const edm::EventSetup& es) {
+    path_ = "/afs/cern.ch/work/j/jhavukai/private/LWTNNinCMSSW/CMSSW_9_3_X_2017-09-25-1100/src/Tensorflow_graph";
+    graph_ = tf::Graph(path);
+    session_ = tf::Session(&graph_);
+    xShape_ = tf::Shape({1,22});
+    x_ = tf::Tensor(2,xShape_);
+    y_ = tf::Tensor();
+  }
+
+  float operator()(reco::Track const & trk,
+		   reco::BeamSpot const & beamSpot,
+		   reco::VertexCollection const & vertices) const {
+
+  }
+
+  static const char * name();
+
+  static void fillDescriptions(edm::ParameterSetDescription & desc) {}
+
+  std::string path_;
+  tf::Session session_;
+  tf::Tensor* x_ = nullptr;
+  tf::Tensor* y_ = nullptr;
+
+}
   
 template<bool PROMPT>
 struct mva {
