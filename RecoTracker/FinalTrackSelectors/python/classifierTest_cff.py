@@ -1,7 +1,7 @@
 from RecoTracker.FinalTrackSelectors.TrackCutClassifier_cff import *
 from RecoTracker.FinalTrackSelectors.TrackMVAClassifierPrompt_cfi import *
 from RecoTracker.FinalTrackSelectors.TrackMVAClassifierDetached_cfi import *
-
+from RecoTracker.FinalTrackSelectors.TrackDNNClassifier_cfi import *
 
 
 testTrackClassifier1 = TrackMVAClassifierPrompt.clone()
@@ -39,8 +39,11 @@ testTrackMerger2.inputClassifiers =['testMergedClassifier','testTrackClassifier3
 testTrackMerger2.minQuality = 'tight'
 
 
+testTrackClassifier4 = TrackDNNClassifier.clone()
+testTrackClassifier4.src = 'initialStepTracks'
+testTrackClassifier4.qualityCuts = [-0.5,0.0,0.5]
 
 
 
 testTrackCloning = cms.Sequence(testTrackClassifier1*testTrackClassifier2*testTrackClassifier3*
-                                testMergedClassifier*testTrackMerger*testTrackMerger2)
+                                testMergedClassifier*testTrackMerger*testTrackMerger2*testTrackClassifier4)

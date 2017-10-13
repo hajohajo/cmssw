@@ -57,6 +57,43 @@ private:
   
 };
 
+template<typename DNN>
+class TrackDNNClassifier : public TrackMVAClassifierBase {
+public:
+  explicit TrackDNNClassifier( const edm::ParameterSet & cfg ) :
+    TrackMVAClassifierBase(cfg),
+    dnn(cfg.getParameter<edm::ParameterSet>("dnn")){}
+
+    static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+      edm::ParameterSetDescription desc;
+      fill(desc);
+      edm::ParameterSetDescription mvaDesc;
+      DNN::fillDescriptions(mvaDesc);
+      desc.add<edm::ParameterSetDescription>("dnn",mvaDesc);
+      descriptions.add(DNN::name(),desc);
+    }
+
+private:
+    void beginStream(edm::StreamID) final {
+      dnn.beginStream();
+    }
+
+    void initEvent(const edm::EventSetup& es) final {
+      dnn.initEvent(es);
+    }
+
+    void computeMVA(reco::TrackCollection const & tracks,
+		    reco::BeamSpot const & beamSpot,
+		    reco::VertexCollection const & vertices,
+		    MVACollection & mvas) const final {
+
+      size_t current = 0;
+      for (auto const & trk : tracks) {
+        mvas[current++]= dnn(trk,beamSpot,vertices);
+      }
+    }
+  DNN dnn;
+};
 
 template<typename MVA>
 class TrackMVAClassifier : public TrackMVAClassifierBase {
