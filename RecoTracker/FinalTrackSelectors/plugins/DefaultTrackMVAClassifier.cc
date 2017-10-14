@@ -88,11 +88,15 @@ struct dnn {
     tf::run(session_,input_names_,inputs_,output_names_, &outputs_);
 
     float dnn_value = outputs_[0].matrix<float>()(0,0);
+    
+    //Rescale to match the BDT outputs
+    float out_value = 2.0*dnn_value-1.0;
+
 
     inputs_.clear();
     outputs_.clear();
 
-    return dnn_value;
+    return out_value;
   }
 
   static const char * name();
