@@ -16,16 +16,7 @@ namespace {
 
 template<bool PROMPT>
 struct dnn {
-  dnn(const edm::ParameterSet &cfg)
-//    std::string path_; //= "/afs/cern.ch/work/j/jhavukai/private/LWTNNinCMSSW/CMSSW_9_3_X_2017-09-25-1100/src/Tensorflow_graph";
-//    tf::MetaGraphDef* metaGraph_;
-//    tf::Session session_; //(&graph_);
-////    xShape_[], // = {1,22},
-//    tf::Tensor* x_;
-//    tf::Tensor* y_;
-//    tf::Session* session_;
-
-  {}
+  dnn(const edm::ParameterSet &cfg){}
 
   void beginStream(){
     path_ = "/afs/cern.ch/work/j/jhavukai/private/LWTNNinCMSSW/NewTest/CMSSW_9_4_X_2017-10-01-0000/src/Tensorflow_graph";
