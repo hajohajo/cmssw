@@ -249,12 +249,14 @@ lowPtTripletStep.src = 'lowPtTripletStepTracks'
 lowPtTripletStep.mva.GBRForestLabel = 'MVASelectorIter1_13TeV'
 lowPtTripletStep.qualityCuts = [-0.6,-0.3,-0.1]
 
-trackingPhase1.toReplaceWith(lowPtTripletStep, lowPtTripletStep.clone(
-     mva = dict(GBRForestLabel = 'MVASelectorLowPtTripletStep_Phase1'),
-     qualityCuts = [-0.4,0.0,0.3],
-))
 fastSim.toModify(lowPtTripletStep, vertices = "firstStepPrimaryVerticesBeforeMixing")
 
+#LWTNN selector
+from RecoTracker.FinalTrackSelectors.TrackLwtnnClassifier_cfi import *
+trackingPhase1.toReplaceWith(lowPtTripletStep, TrackLwtnnClassifier.clone(
+     src = 'lowPtTripletStepTracks',
+     qualityCuts = [-0.2,0.1,0.3]
+))
 
 # For LowPU and Phase2PU140
 import RecoTracker.FinalTrackSelectors.multiTrackSelector_cfi
