@@ -236,7 +236,8 @@ detachedTripletStep.inputClassifiers=['detachedTripletStepClassifier1','detached
 from RecoTracker.FinalTrackSelectors.TrackLwtnnClassifier_cfi import *
 trackingPhase1.toReplaceWith(detachedTripletStep, TrackLwtnnClassifier.clone(
      src = 'detachedTripletStepTracks',
-     qualityCuts = [-0.4,0.45,0.9]
+     qualityCuts = [-0.4,0.45,0.9],
+     mva = dict(fileName = cms.FileInPath("RecoTracker/FinalTrackSelectors/data/LWTNN_network_v1.json"))
 ))
 
 # For LowPU
