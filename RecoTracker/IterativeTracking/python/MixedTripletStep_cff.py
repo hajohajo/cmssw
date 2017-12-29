@@ -312,7 +312,7 @@ from RecoTracker.FinalTrackSelectors.TrackLwtnnClassifier_cfi import *
 from RecoTracker.FinalTrackSelectors.trackSelectionLwtnn_cfi import *
 trackingPhase1.toReplaceWith(mixedTripletStep, TrackLwtnnClassifier.clone(
      src = 'mixedTripletStepTracks',
-     qualityCuts = [-0.95,-0.9,-0.6],
+     qualityCuts = [-0.85,-0.8,-0.5],
 ))
 
 # For LowPU

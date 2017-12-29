@@ -362,7 +362,7 @@ from RecoTracker.FinalTrackSelectors.TrackLwtnnClassifier_cfi import *
 from RecoTracker.FinalTrackSelectors.trackSelectionLwtnn_cfi import *
 trackingPhase1.toReplaceWith(tobTecStep, TrackLwtnnClassifier.clone(
      src = 'tobTecStepTracks',
-     qualityCuts = [-0.9,-0.85,-0.8],
+     qualityCuts = [-0.4,-0.3,-0.2],
 ))
 
 import RecoTracker.FinalTrackSelectors.multiTrackSelector_cfi
