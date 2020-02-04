@@ -10,6 +10,7 @@
 <use   name="TrackingTools/Records"/>
 <use   name="roottmva"/>
 <use   name="lwtnn"/>
+<use   name="PhysicsTools/TensorFlow"/>
 <export>
   <lib   name="1"/>
 </export>

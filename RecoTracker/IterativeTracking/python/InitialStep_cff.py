@@ -4,6 +4,7 @@ from Configuration.Eras.Modifier_fastSim_cff import fastSim
 
 #for dnn classifier
 from Configuration.ProcessModifiers.trackdnn_cff import trackdnn
+from dnnQualityCuts import qualityCutDictionary
 
 ### STEP 0 ###
 
@@ -298,9 +299,9 @@ trackingPhase1.toReplaceWith(initialStep, initialStepClassifier1.clone(
      qualityCuts = [-0.95,-0.85,-0.75]
 ))
 
-from RecoTracker.FinalTrackSelectors.TrackLwtnnClassifier_cfi import *
-from RecoTracker.FinalTrackSelectors.trackSelectionLwtnn_cfi import *
-trackdnn.toReplaceWith(initialStep, TrackLwtnnClassifier.clone(
+from RecoTracker.FinalTrackSelectors.TrackTfClassifier_cfi import *
+from RecoTracker.FinalTrackSelectors.trackSelectionTf_cfi import *
+trackdnn.toReplaceWith(initialStep, TrackTfClassifier.clone(
         src = 'initialStepTracks',
         qualityCuts = [0.0, 0.3, 0.6]
 ))
